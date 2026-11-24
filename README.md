@@ -11,9 +11,19 @@ A small multi-tenant billing service (clinics, orders, refunds, payment-provider
 
 ## How a PR gets reviewed
 
-1. `CI` runs type-check and the Postgres-backed test suite.
-2. `Claude Code Review` runs on every PR. It reads [`REVIEW.md`](REVIEW.md), posts inline comments with a concrete failure scenario for each finding, and ends with a BLOCKING / NON-BLOCKING table and a verdict.
-3. A human (me) reviews last: I verify each bot finding, dismiss false positives, and look for what the bot can't know (product intent, provider behavior, rollout risk).
+Automated review on every push is slow, expensive across many branches, and generic. Instead, each PR gets its own reviewer agent, launched on demand with the context it needs:
+
+```bash
+scripts/review-pr.sh 1 "Admins can refund the full remaining amount of an order in their own clinic"
+```
+
+1. The script checks the PR out into its own git worktree (`.review/pr-<n>`), so reviews never collide with each other or with my working branch.
+2. It starts a fresh Claude Code session with [`/review-pr`](.claude/commands/review-pr.md), the PR number and a one-line brief of the intended behavior.
+3. The agent reads [`CLAUDE.md`](CLAUDE.md) (how code here must be structured) and [`REVIEW.md`](REVIEW.md) (the blocking checklist), runs type-check and tests, and **must prove every blocking finding with a failing test**. Unproven findings get downgraded.
+4. It posts a structured review on the PR: verdict, findings table, failure scenarios, proof tests.
+5. I review last: verify each finding, drop false positives, and check what the agent can't know (product intent, provider behavior, rollout risk).
+
+`CI` (type-check plus the Postgres-backed test suite) still runs on every PR. It is cheap and catches regressions, but green CI is not a review.
 
 ## Run locally
 
