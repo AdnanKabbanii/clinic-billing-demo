@@ -1,0 +1,13 @@
+import express from 'express';
+import { requireAuth } from './auth.js';
+import { refundsRouter } from './routes/refunds.js';
+import { webhookRouter } from './webhooks/provider.js';
+
+export function createApp() {
+  const app = express();
+  app.use(webhookRouter);
+  app.use(express.json());
+  app.use(requireAuth);
+  app.use(refundsRouter);
+  return app;
+}
